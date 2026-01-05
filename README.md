@@ -19,8 +19,9 @@ This service solves that by automatically identifying which customers are new ve
 - **Clear Error Messages** - Detailed validation feedback with actionable recommendations
 
 <img width="2530" height="1654" alt="image" src="https://github.com/user-attachments/assets/9bc1f48c-1c15-4b0f-8941-4810cbbd8900" />
-<img width="2530" height="1654" alt="image" src="https://github.com/user-attachments/assets/36b09cb9-8658-4326-8df5-3087f5cbae3d" />
+
 <img width="2530" height="1654" alt="image" src="https://github.com/user-attachments/assets/459e34a0-6aec-4a3a-b9e2-80f2fe31568b" />
+<img width="2530" height="1654" alt="image" src="https://github.com/user-attachments/assets/36b09cb9-8658-4326-8df5-3087f5cbae3d" />
 
 <img width="2692" height="1536" alt="image" src="https://github.com/user-attachments/assets/e6563bed-9dd6-4d20-b7ae-2b14b1ef428c" />
 
