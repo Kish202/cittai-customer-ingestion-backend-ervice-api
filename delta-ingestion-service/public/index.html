@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delta Ingestion Service</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #666;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        textarea, input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            transition: border-color 0.3s;
+        }
+
+        textarea {
+            min-height: 300px;
+            resize: vertical;
+        }
+
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .response {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .response.success {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            color: #155724;
+        }
+
+        .response.error {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            color: #721c24;
+        }
+
+        .response pre {
+            margin-top: 10px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .examples {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .examples h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .example-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .example-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Delta Ingestion Service</h1>
+            <p>Production-grade customer data ingestion with delta detection</p>
+        </div>
+
+        <div class="card">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('ingest')">📥 Ingest Data</button>
+                <button class="tab" onclick="switchTab('dryrun')">🔍 Dry Run</button>
+                <button class="tab" onclick="switchTab('health')">❤️ Health Check</button>
+                <button class="tab" onclick="switchTab('stats')">📊 Statistics</button>
+            </div>
+
+            <!-- Ingest Tab -->
+            <div id="ingest" class="tab-content active">
+                <h2>Ingest Customer Data</h2>
+                <p style="color: #666; margin-bottom: 20px;">Upload customer data with automatic delta detection. Only new customers will be inserted.</p>
+
+                <div class="examples">
+                    <h4>Quick Examples:</h4>
+                    <button class="example-btn" onclick="loadExample('single')">Single Customer</button>
+                    <button class="example-btn" onclick="loadExample('multiple')">Multiple Customers</button>
+                    <button class="example-btn" onclick="loadExample('mixed')">Mixed (New + Existing)</button>
+                    <button class="example-btn" onclick="loadExample('large')">Large Batch (10 records)</button>
+                </div>
+
+                <div class="form-group">
+                    <label>Customer Data (JSON Array):</label>
+                    <textarea id="ingestData" placeholder='[
+  {
+    "external_id": "cust_004",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "country_code": "US",
+    "status_code": "ACTIVE"
+  }
+]'></textarea>
+                </div>
+
+                <button class="btn btn-primary" onclick="ingestData()">📤 Ingest Data</button>
+                <button class="btn btn-secondary" onclick="clearResponse('ingest')">Clear</button>
+
+                <div class="loading" id="ingestLoading">
+                    <div class="spinner"></div>
+                    <p>Processing ingestion...</p>
+                </div>
+
+                <div class="response" id="ingestResponse"></div>
+            </div>
+
+            <!-- Dry Run Tab -->
+            <div id="dryrun" class="tab-content">
+                <h2>Dry Run Mode</h2>
+                <p style="color: #666; margin-bottom: 20px;">Preview what would be inserted without actually writing to the database.</p>
+
+                <div class="form-group">
+                    <label>Customer Data (JSON Array):</label>
+                    <textarea id="dryrunData" placeholder='[...]'></textarea>
+                </div>
+
+                <button class="btn btn-primary" onclick="dryRun()">🔍 Run Dry Run</button>
+                <button class="btn btn-secondary" onclick="clearResponse('dryrun')">Clear</button>
+
+                <div class="loading" id="dryrunLoading">
+                    <div class="spinner"></div>
+                    <p>Analyzing data...</p>
+                </div>
+
+                <div class="response" id="dryrunResponse"></div>
+            </div>
+
+            <!-- Health Check Tab -->
+            <div id="health" class="tab-content">
+                <h2>System Health Check</h2>
+                <p style="color: #666; margin-bottom: 20px;">Check the health of the service and database connection.</p>
+
+                <button class="btn btn-primary" onclick="checkHealth()">❤️ Check Health</button>
+
+                <div class="loading" id="healthLoading">
+                    <div class="spinner"></div>
+                    <p>Checking health...</p>
+                </div>
+
+                <div class="response" id="healthResponse"></div>
+            </div>
+
+            <!-- Statistics Tab -->
+            <div id="stats" class="tab-content">
+                <h2>Database Statistics</h2>
+                <p style="color: #666; margin-bottom: 20px;">View current database statistics and cache information.</p>
+
+                <button class="btn btn-primary" onclick="getStats()">📊 Get Statistics</button>
+
+                <div class="loading" id="statsLoading">
+                    <div class="spinner"></div>
+                    <p>Loading statistics...</p>
+                </div>
+
+                <div class="response" id="statsResponse"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function showLoading(id) {
+            document.getElementById(id + 'Loading').style.display = 'block';
+            document.getElementById(id + 'Response').style.display = 'none';
+        }
+
+        function hideLoading(id) {
+            document.getElementById(id + 'Loading').style.display = 'none';
+        }
+
+        function showResponse(id, data, isSuccess) {
+            const responseDiv = document.getElementById(id + 'Response');
+            responseDiv.className = 'response ' + (isSuccess ? 'success' : 'error');
+            responseDiv.innerHTML = `
+                <strong>${isSuccess ? '✅ Success!' : '❌ Error'}</strong>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            responseDiv.style.display = 'block';
+        }
+
+        function clearResponse(id) {
+            document.getElementById(id + 'Response').style.display = 'none';
+            if (id === 'ingest') document.getElementById('ingestData').value = '';
+            if (id === 'dryrun') document.getElementById('dryrunData').value = '';
+        }
+
+        async function ingestData() {
+            const data = document.getElementById('ingestData').value;
+            try {
+                const parsed = JSON.parse(data);
+                showLoading('ingest');
+                const response = await fetch(`${API_BASE}/customers/ingest`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(parsed)
+                });
+                const result = await response.json();
+                hideLoading('ingest');
+                showResponse('ingest', result, response.ok);
+            } catch (error) {
+                hideLoading('ingest');
+                showResponse('ingest', { error: error.message }, false);
+            }
+        }
+
+        async function dryRun() {
+            const data = document.getElementById('dryrunData').value;
+            try {
+                const parsed = JSON.parse(data);
+                showLoading('dryrun');
+                const response = await fetch(`${API_BASE}/customers/ingest/dry-run`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(parsed)
+                });
+                const result = await response.json();
+                hideLoading('dryrun');
+                showResponse('dryrun', result, response.ok);
+            } catch (error) {
+                hideLoading('dryrun');
+                showResponse('dryrun', { error: error.message }, false);
+            }
+        }
+
+        async function checkHealth() {
+            showLoading('health');
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const result = await response.json();
+                hideLoading('health');
+                showResponse('health', result, response.ok);
+            } catch (error) {
+                hideLoading('health');
+                showResponse('health', { error: error.message }, false);
+            }
+        }
+
+        async function getStats() {
+            showLoading('stats');
+            try {
+                const response = await fetch(`${API_BASE}/stats`);
+                const result = await response.json();
+                hideLoading('stats');
+                showResponse('stats', result, response.ok);
+            } catch (error) {
+                hideLoading('stats');
+                showResponse('stats', { error: error.message }, false);
+            }
+        }
+
+        function loadExample(type) {
+            let example;
+            const timestamp = Date.now();
+            
+            switch(type) {
+                case 'single':
+                    example = [{
+                        "external_id": `test_${timestamp}`,
+                        "name": "John Doe",
+                        "email": "john.doe@example.com",
+                        "country_code": "US",
+                        "status_code": "ACTIVE"
+                    }];
+                    break;
+                case 'multiple':
+                    example = [
+                        {
+                            "external_id": `test_${timestamp}_1`,
+                            "name": "Alice Smith",
+                            "email": "alice@example.com",
+                            "country_code": "UK",
+                            "status_code": "ACTIVE"
+                        },
+                        {
+                            "external_id": `test_${timestamp}_2`,
+                            "name": "Bob Johnson",
+                            "email": "bob@example.com",
+                            "country_code": "CA",
+                            "status_code": "PENDING"
+                        }
+                    ];
+                    break;
+                case 'mixed':
+                    example = [
+                        {
+                            "external_id": "cust_001",
+                            "name": "Existing Customer",
+                            "email": "existing@example.com",
+                            "country_code": "US",
+                            "status_code": "ACTIVE"
+                        },
+                        {
+                            "external_id": `test_new_${timestamp}`,
+                            "name": "New Customer",
+                            "email": "new@example.com",
+                            "country_code": "IN",
+                            "status_code": "ACTIVE"
+                        }
+                    ];
+                    break;
+                case 'large':
+                    example = [];
+                    const countries = ["US", "UK", "CA", "IN", "AU"];
+                    for (let i = 1; i <= 10; i++) {
+                        example.push({
+                            "external_id": `batch_${timestamp}_${i}`,
+                            "name": `Customer ${i}`,
+                            "email": `customer${i}@example.com`,
+                            "country_code": countries[i % 5],
+                            "status_code": "ACTIVE"
+                        });
+                    }
+                    break;
+            }
+            
+            document.getElementById('ingestData').value = JSON.stringify(example, null, 2);
+        }
+    </script>
+</body>
+</html>

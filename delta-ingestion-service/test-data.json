@@ -1,0 +1,58 @@
+[
+  {
+    "external_id": "cust_001",
+    "name": "Alice Johnson",
+    "email": "alice@example.com",
+    "country_code": "US",
+    "status_code": "ACTIVE"
+  },
+  {
+    "external_id": "cust_004",
+    "name": "David Lee",
+    "email": "david@example.com",
+    "country_code": "CA",
+    "status_code": "ACTIVE"
+  },
+  {
+    "external_id": "cust_005",
+    "name": "Emma Wilson",
+    "email": "emma@example.com",
+    "country_code": "UK",
+    "status_code": "ACTIVE"
+  },
+  {
+    "external_id": "cust_006",
+    "name": "Frank Zhang",
+    "email": "frank@example.com",
+    "country_code": "AU",
+    "status_code": "INACTIVE"
+  },
+  {
+    "external_id": "cust_007",
+    "name": "Grace Kumar",
+    "email": "grace@example.com",
+    "country_code": "IN",
+    "status_code": "ACTIVE"
+  },
+  {
+    "external_id": "cust_008",
+    "name": "Henry Brown",
+    "email": "henry@example.com",
+    "country_code": "US",
+    "status_code": "PENDING"
+  },
+  {
+    "external_id": "cust_009",
+    "name": "Iris Martinez",
+    "email": "iris@example.com",
+    "country_code": "US",
+    "status_code": "ACTIVE"
+  },
+  {
+    "external_id": "cust_010",
+    "name": "Jack Thompson",
+    "email": "jack@example.com",
+    "country_code": "CA",
+    "status_code": "ACTIVE"
+  }
+]
