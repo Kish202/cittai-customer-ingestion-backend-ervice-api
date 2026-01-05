@@ -14,32 +14,22 @@ dotenv.config();
 // Create Express app
 const app = express();
 const path = require('path');
+
 // Middleware
 app.use(express.json({ limit: '50mb' })); // Support large JSON payloads
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
+
 // Serve static files (frontend)
 app.use(express.static(path.join(__dirname, '../public')));
-// Root endpoint - serve frontend HTML
+
 
 // Routes
 app.use('/api', ingestionRoutes);
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
-// Root endpoint
-// app.get('/', (req, res) => {
-//     res.json({
-//         service: 'Delta Ingestion Service',
-//         version: '1.0.0',
-//         endpoints: {
-//             ingest: 'POST /api/customers/ingest',
-//             dryRun: 'POST /api/customers/ingest/dry-run',
-//             health: 'GET /api/health',
-//             stats: 'GET /api/stats'
-//         }
-//     });
-// });
+
 
 // Error handling
 app.use(notFoundHandler);
@@ -76,10 +66,10 @@ async function start() {
         process.exit(1);
     }
 
-    const server = app.listen(PORT, () => {
-        logger.info(`Server running on port ${PORT}`);
-        logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    });
+    // const server = app.listen(PORT, () => {
+    //     logger.info(`Server running on port ${PORT}`);
+    //     logger.info(`Environment: ${process.env.NODE_ENV || 'production'}`);
+    // });
 
     // Graceful shutdown
     const gracefulShutdown = async (signal) => {
