@@ -198,8 +198,8 @@ MIT
 ## Author
 
 **Tania Kesh**
-- GitHub: [@taniakesh](https://github.com/taniakesh)
-- LinkedIn: [Tania Kesh](https://linkedin.com/in/taniakesh)
+- GitHub: [@taniakesh](https://github.com/Kish202/)
+- LinkedIn: [Tania Kesh](https://www.linkedin.com/in/tania-t-4625252ab/)
 
 ---
 
