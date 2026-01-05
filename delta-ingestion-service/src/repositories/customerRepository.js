@@ -4,8 +4,7 @@ const logger = require('../utils/logger');
 
 class CustomerRepository {
     /**
-     * Bulk check which external_ids already exist in the database
-     * This is critical for delta detection - avoids N+1 queries
+     
      * @param {Array<string>} externalIds - Array of external IDs to check
      * @returns {Promise<Set>} Set of existing external IDs
      */
@@ -23,7 +22,7 @@ class CustomerRepository {
             
             const result = await pool.query(query, [externalIds]);
             
-            // Return as Set for O(1) lookup
+           
             const existingIds = new Set(result.rows.map(row => row.external_id));
             
             logger.info(`Found ${existingIds.size} existing customers out of ${externalIds.length} checked`);
@@ -51,8 +50,6 @@ class CustomerRepository {
 
             await client.query('BEGIN');
 
-            // Build parameterized query for bulk insert
-            // This prevents SQL injection and is more efficient than individual inserts
             const values = [];
             const placeholders = [];
             

@@ -1,282 +1,3 @@
-// const customerRepository = require('../repositories/customerRepository');
-// const lookupService = require('./lookupService');
-// const validationService = require('./validationService');
-// const { chunkArray } = require('../utils/chunker');
-// const MetricsCollector = require('../utils/metrics');
-// const logger = require('../utils/logger');
-// const { CHUNK_SIZE, MAX_BATCH_SIZE } = require('../config/constants');
-
-// /**
-//  * Delta Service - Core business logic for delta ingestion
-//  * Handles the complete flow: validation -> delta detection -> lookup resolution -> insert
-//  */
-// class DeltaService {
-//     /**
-//      * Main ingestion method
-//      * @param {Array<Object>} incomingCustomers - Array of customer records from external source
-//      * @param {Object} options - Processing options
-//      * @returns {Promise<Object>} Ingestion result with metrics
-//      */
-//     async ingestCustomers(incomingCustomers, options = {}) {
-//         const metrics = new MetricsCollector();
-//         metrics.start();
-
-//         try {
-//             logger.info(`Starting ingestion of ${incomingCustomers.length} customers`);
-//             metrics.recordReceived(incomingCustomers.length);
-
-//             // Step 1: Validate batch size
-//             const sizeValidation = validationService.validateBatchSize(
-//                 incomingCustomers, 
-//                 options.maxBatchSize || MAX_BATCH_SIZE
-//             );
-
-//             if (!sizeValidation.isValid) {
-//                 throw new Error(
-//                     `Batch size ${sizeValidation.size} exceeds maximum ${sizeValidation.maxSize}`
-//                 );
-//             }
-
-//             // Step 2: Validate and sanitize input data
-//             const validation = validationService.validateBatch(incomingCustomers);
-            
-//             if (validation.invalid.length > 0) {
-//                 logger.warn(`Found ${validation.invalid.length} invalid records`);
-//                 metrics.recordFailed(validation.invalid.length);
-//             }
-
-//             if (validation.valid.length === 0) {
-//                 metrics.end();
-//                 return {
-//                     success: false,
-//                     ...metrics.getSummary(),
-//                     errors: validation.errors
-//                 };
-//             }
-
-//             // Step 3: Remove duplicates within the batch
-//             const uniqueCustomers = validationService.removeDuplicates(validation.valid);
-//             const duplicatesRemoved = validation.valid.length - uniqueCustomers.length;
-            
-//             if (duplicatesRemoved > 0) {
-//                 metrics.recordFailed(duplicatesRemoved);
-//             }
-
-//             // Step 4: Initialize lookup caches
-//             if (!lookupService.isCacheInitialized()) {
-//                 await lookupService.initializeCaches();
-//             }
-
-//             // Step 5: Resolve lookup codes (country_code -> country_id, status_code -> status_id)
-//             const lookupResult = lookupService.resolveCustomerLookups(uniqueCustomers, metrics);
-
-//             if (lookupResult.failed.length > 0) {
-//                 logger.warn(`Failed to resolve lookups for ${lookupResult.failed.length} records`);
-//                 metrics.recordFailed(lookupResult.failed.length);
-//             }
-
-//             if (lookupResult.resolved.length === 0) {
-//                 metrics.end();
-//                 return {
-//                     success: false,
-//                     ...metrics.getSummary(),
-//                     errors: lookupResult.failed.map(f => f.reason)
-//                 };
-//             }
-
-//             // Step 6: Delta detection - find which customers are new
-//             const deltaResult = await this.detectDelta(lookupResult.resolved, metrics);
-
-//             logger.info(`Delta detected: ${deltaResult.newCustomers.length} new, ${deltaResult.existingCustomers.length} existing`);
-//             metrics.recordSkipped(deltaResult.existingCustomers.length);
-
-//             if (deltaResult.newCustomers.length === 0) {
-//                 logger.info('No new customers to insert');
-//                 metrics.end();
-//                 return {
-//                     success: true,
-//                     ...metrics.getSummary(),
-//                     message: 'All customers already exist'
-//                 };
-//             }
-
-//             // Step 7: Bulk insert new customers
-//             const insertResult = await this.insertNewCustomers(
-//                 deltaResult.newCustomers, 
-//                 metrics,
-//                 options
-//             );
-
-//             metrics.recordInserted(insertResult.inserted);
-//             metrics.end();
-
-//             logger.info('Ingestion completed successfully', metrics.getSummary());
-
-//             return {
-//                 success: true,
-//                 ...metrics.getSummary(),
-//                 validationErrors: validation.invalid.length > 0 ? 
-//                     validation.invalid.map(i => ({ index: i.index, errors: i.errors })) : undefined,
-//                 lookupErrors: lookupResult.failed.length > 0 ?
-//                     lookupResult.failed.map(f => ({ index: f.index, reason: f.reason })) : undefined
-//             };
-
-//         } catch (error) {
-//             metrics.end();
-//             metrics.recordError(error);
-//             logger.error('Ingestion failed:', error);
-            
-//             return {
-//                 success: false,
-//                 ...metrics.getSummary(),
-//                 error: error.message
-//             };
-//         }
-//     }
-
-//     /**
-//      * Detect delta - identify new customers vs existing customers
-//      * Uses bulk query to avoid N+1 problem
-//      * @param {Array<Object>} customers - Customers with resolved lookup IDs
-//      * @param {Object} metrics - Metrics collector
-//      * @returns {Promise<Object>} Delta result
-//      */
-//     async detectDelta(customers, metrics) {
-//         try {
-//             // Extract all external_ids
-//             const externalIds = customers.map(c => c.external_id);
-
-//             // Bulk check which ones already exist (single query)
-//             const existingIds = await customerRepository.getExistingExternalIds(externalIds);
-//             metrics.recordDbQuery();
-
-//             // Partition into new vs existing
-//             const newCustomers = [];
-//             const existingCustomers = [];
-
-//             customers.forEach(customer => {
-//                 if (existingIds.has(customer.external_id)) {
-//                     existingCustomers.push(customer);
-//                 } else {
-//                     newCustomers.push(customer);
-//                 }
-//             });
-
-//             return {
-//                 newCustomers,
-//                 existingCustomers,
-//                 totalChecked: customers.length
-//             };
-
-//         } catch (error) {
-//             logger.error('Error detecting delta:', error);
-//             throw error;
-//         }
-//     }
-
-//     /**
-//      * Insert new customers with chunking for large datasets
-//      * @param {Array<Object>} customers - New customers to insert
-//      * @param {Object} metrics - Metrics collector
-//      * @param {Object} options - Processing options
-//      * @returns {Promise<Object>} Insert result
-//      */
-//     async insertNewCustomers(customers, metrics, options = {}) {
-//         try {
-//             const chunkSize = options.chunkSize || CHUNK_SIZE;
-
-//             // For small batches, insert directly
-//             if (customers.length <= chunkSize) {
-//                 metrics.recordChunkProcessed();
-//                 metrics.recordDbQuery();
-//                 return await customerRepository.bulkInsert(customers);
-//             }
-
-//             // For large batches, chunk and process
-//             const chunks = chunkArray(customers, chunkSize);
-//             logger.info(`Processing ${customers.length} customers in ${chunks.length} chunks`);
-
-//             let totalInserted = 0;
-//             let totalFailed = 0;
-//             let totalSkipped = 0;
-
-//             for (let i = 0; i < chunks.length; i++) {
-//                 const chunk = chunks[i];
-//                 logger.info(`Processing chunk ${i + 1}/${chunks.length} (${chunk.length} records)`);
-
-//                 const result = await customerRepository.bulkInsert(chunk);
-//                 metrics.recordChunkProcessed();
-//                 metrics.recordDbQuery();
-
-//                 totalInserted += result.inserted;
-//                 totalFailed += result.failed;
-//                 totalSkipped += result.skipped;
-//             }
-
-//             return {
-//                 inserted: totalInserted,
-//                 failed: totalFailed,
-//                 skipped: totalSkipped
-//             };
-
-//         } catch (error) {
-//             logger.error('Error inserting customers:', error);
-//             throw error;
-//         }
-//     }
-
-//     /**
-//      * Dry run mode - show what would be inserted without actually writing
-//      * @param {Array<Object>} incomingCustomers
-//      * @param {Object} options
-//      * @returns {Promise<Object>}
-//      */
-//     async dryRun(incomingCustomers, options = {}) {
-//         const metrics = new MetricsCollector();
-//         metrics.start();
-
-//         try {
-//             logger.info(`Starting DRY RUN for ${incomingCustomers.length} customers`);
-
-//             // Validate
-//             const validation = validationService.validateBatch(incomingCustomers);
-//             const uniqueCustomers = validationService.removeDuplicates(validation.valid);
-
-//             // Initialize lookups
-//             if (!lookupService.isCacheInitialized()) {
-//                 await lookupService.initializeCaches();
-//             }
-
-//             // Resolve lookups
-//             const lookupResult = lookupService.resolveCustomerLookups(uniqueCustomers, metrics);
-
-//             // Detect delta
-//             const deltaResult = await this.detectDelta(lookupResult.resolved, metrics);
-
-//             metrics.end();
-
-//             return {
-//                 dryRun: true,
-//                 wouldInsert: deltaResult.newCustomers.length,
-//                 wouldSkip: deltaResult.existingCustomers.length,
-//                 validationErrors: validation.invalid.length,
-//                 lookupErrors: lookupResult.failed.length,
-//                 newCustomers: deltaResult.newCustomers.map(c => c.external_id),
-//                 existingCustomers: deltaResult.existingCustomers.map(c => c.external_id),
-//                 ...metrics.getSummary()
-//             };
-
-//         } catch (error) {
-//             metrics.end();
-//             logger.error('Dry run failed:', error);
-//             throw error;
-//         }
-//     }
-// }
-
-// module.exports = new DeltaService();
-
-
 const customerRepository = require('../repositories/customerRepository');
 const lookupService = require('./lookupService');
 const validationService = require('./validationService');
@@ -285,10 +6,6 @@ const MetricsCollector = require('../utils/metrics');
 const logger = require('../utils/logger');
 const { CHUNK_SIZE, MAX_BATCH_SIZE } = require('../config/constants');
 
-/**
- * Delta Service - Core business logic for delta ingestion
- * Handles the complete flow: validation -> delta detection -> lookup resolution -> insert
- */
 class DeltaService {
     /**
      * Main ingestion method
@@ -414,22 +131,21 @@ class DeltaService {
     }
 
     /**
-     * Detect delta - identify new customers vs existing customers
-     * Uses bulk query to avoid N+1 problem
+   
      * @param {Array<Object>} customers - Customers with resolved lookup IDs
      * @param {Object} metrics - Metrics collector
      * @returns {Promise<Object>} Delta result
      */
     async detectDelta(customers, metrics) {
         try {
-            // Extract all external_ids
+            
             const externalIds = customers.map(c => c.external_id);
 
             // Bulk check which ones already exist (single query)
             const existingIds = await customerRepository.getExistingExternalIds(externalIds);
             metrics.recordDbQuery();
 
-            // Partition into new vs existing
+         
             const newCustomers = [];
             const existingCustomers = [];
 
@@ -505,8 +221,7 @@ class DeltaService {
     }
 
     /**
-     * Dry run mode - show what would be inserted without actually writing
-     * WITH IMPROVED, READABLE ERROR MESSAGES
+     
      * @param {Array<Object>} incomingCustomers
      * @param {Object} options
      * @returns {Promise<Object>}
@@ -633,7 +348,6 @@ class DeltaService {
             metrics.end();
             logger.error('Dry run failed:', error);
             
-            // Return user-friendly error
             return {
                 dryRun: true,
                 success: false,
